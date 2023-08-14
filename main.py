@@ -1,5 +1,5 @@
 import cv2
-import mediapipe
+import mediapipe as mp
 
 class ReconhecimentoImagem():
 
@@ -10,35 +10,75 @@ class ReconhecimentoImagem():
         self.working_ports = []
         self.available_ports = []
 
-    def print_hi(self, name):
-        # Use a breakpoint in the code line below to debug your script.
-        print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
-
     def list_ports(self):
         """
-        Test the ports and returns a tuple with the available ports and the ones that are working.
+        Testa as portas do computador e retorna uma tupla com as portas disponiveis e as portas que estao funcionando.
         """
-        while len(self.non_working_ports) < 6:  # if there are more than 5 non working ports stop the testing.
-            camera = cv2.VideoCapture(self.dev_port)
-            if not camera.isOpened():
+        while len(self.non_working_ports) < 6:  # Se houver mais do que 5 portas que nao funcionam "non working ports", para o teste!
+            webcam = cv2.VideoCapture(self.dev_port)
+            if not webcam.isOpened():
                 self.non_working_ports.append(self.dev_port)
-                print("Port %s is not working." % self.dev_port)
+                print(f"Porta {self.dev_port} nao funciona.")
             else:
-                is_reading, img = camera.read()
-                w = camera.get(3)
-                h = camera.get(4)
+                is_reading, img = webcam.read()
+                w = webcam.get(3)
+                h = webcam.get(4)
                 if is_reading:
-                    print("Port %s is working and reads images (%s x %s)" % (self.dev_port, h, w))
-                    working_ports.append(self.dev_port)
+                    print(f"Porta {self.dev_port} está funcionando e lê imagens ({h} x {w})")
+                    self.working_ports.append(self.dev_port)
                 else:
-                    print("Port %s for camera ( %s x %s) is present but does not reads." % (self.dev_port, h, w))
+                    print(f"Porta {self.dev_port} para camera ({h} x {w}) está presente mas não lê.")
                     self.available_ports.append(self.dev_port)
             self.dev_port += 1
         return self.available_ports, self.working_ports, self.non_working_ports
+    
+    def selecionar_webcam(self, porta):
+        self.dev_port = porta
 
-# Press the green button in the gutter to run the script.
+    def testar_webcam(self):
+        webcam = cv2.VideoCapture(self.dev_port)
+        if webcam.isOpened():
+            self.is_working, image = webcam.read()
+            while self.is_working:
+                self.is_working, image = webcam.read()
+                cv2.imshow("Tela da Camera", image)
+                key = cv2.waitKey(2)
+                if key == 27: # tecla ESC
+                    self.is_working = False
+        else:
+            print("Não funcionou!")
+        webcam.release()
+        cv2.destroyAllWindows()
+
+    def reconhecer_maos(self):
+        webcam = cv2.VideoCapture(self.dev_port)
+        reconhecimento_maos = mp.solutions.hands
+        desenho_mp = mp.solutions.drawing_utils
+        maos = reconhecimento_maos.Hands()
+        if webcam.isOpened():
+            self.is_working, image = webcam.read()
+            while self.is_working:
+                self.is_working, image = webcam.read()
+                frameRGB = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                lista_maos = maos.process(frameRGB)
+                if lista_maos.multi_hand_landmarks:
+                    for mao in lista_maos.multi_hand_landmarks:
+                        desenho_mp.draw_landmarks(image, mao, reconhecimento_maos.HAND_CONNECTIONS)
+                cv2.imshow("Tela da Camera", image)
+                tecla = cv2.waitKey(2)
+                if tecla == 27:
+                    self.is_working = False
+        webcam.release()
+        cv2.destroyAllWindows
+
+
 if __name__ == '__main__':
     ri = ReconhecimentoImagem()
-    ap, wp, nwp = ri.list_ports()
-    print(ap, wp, nwp)
+    # ap, wp, nwp = ri.list_ports()
+    # print(ap, wp, nwp)
+    # ri.testar_webcam()
+    ri.reconhecer_maos()
+
+
+
 
